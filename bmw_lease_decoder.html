@@ -1,0 +1,196 @@
+<html>
+    <head>
+        <title>BMW Lease Decoder</title>        
+        <style>
+            body {
+                color:#414141;
+                font-family: BMWTypeNext,Helvetica Neue,-apple-system,"system-ui",BlinkMacSystemFont,serif;                
+                margin-left: 20%;
+                margin-right: 20%;
+            }
+
+            textarea {
+               color:rgb(28,105,211);
+               font-family: BMWTypeNext,Helvetica Neue,-apple-system,"system-ui",BlinkMacSystemFont,serif;
+               width:80%;
+            }
+
+            hr {
+                unicode-bidi: isolate;
+                margin-block-start: 0.5em;
+                margin-block-end: 0.5em;
+                margin-inline-start: auto;
+                margin-inline-end: auto;
+                overflow: hidden;
+            }
+
+            input {
+                margin: 10px;
+                border:1px solid transparent;
+                color: rgb(255,255,255);
+                background-color: rgb(28,105,211);
+                width: 30%;
+            }
+
+            dl {
+                line-height: px2em(27px);
+            }
+
+            dl, dt {
+                margin: 0;
+                padding: 0;
+                font-size: px2em(12px);
+            }
+
+            dt {
+                width: 60%;
+                font-weight: bold;
+                text-align: right;
+            }
+
+            dd {
+                width: 25%;
+                float: left;
+                clear: left;
+            }
+
+            #errorMsg {
+                color: rgb(255,0,0)
+            }
+            
+        </style>
+    </head>
+    <script type="text/javascript">
+
+        function showError(msg) {
+            const errorMsg =document.getElementById('errorMsg');
+            errorMsg.innerHTML = msg;
+            errorMsg.style.display = 'block';
+            return true;
+        }
+
+        function onDecode () {
+
+            document.getElementById('errorMsg').style.display = 'none';
+            document.getElementById('resultDiv').style.display = 'none';
+
+            const dealInfo = document.getElementById('dealInfo').value;
+
+            const moneyFormat = Intl.NumberFormat('en-US',{style:'currency', currency:'USD', maximumFractionDigits:0});
+
+            const msrpMatch = dealInfo.match(/MSRP of ([\$\d\,]+)/i);
+            if (!msrpMatch)
+            {
+                return showError('MSRP was not found.');
+            }
+            const msrp = Number(msrpMatch[1].replace(/[\$,]/g,''));
+            document.getElementById('resultMSRP').innerHTML = moneyFormat.format(msrp);
+
+            const capCostMatch = dealInfo.match(/adjusted capitalized cost of ([\$\d,]+)/i);
+            if (!capCostMatch)
+            {
+                return showError('Adjusted capitalized cost was not found.');
+            }
+            const capCost = Number(capCostMatch[1].replace(/[\$,]/g,''));
+            document.getElementById('resultCapCost').innerHTML = moneyFormat.format(capCost);
+
+            const rvMatch = dealInfo.match(/Purchase option price at lease end is ([\$\d,]+)/i);
+            if (!rvMatch)
+            {
+                return showError('Residual value was not found.');
+            }
+            const rv = Number(rvMatch[1].replace(/[\$,]/g,''));
+            document.getElementById('resultResidual').innerHTML = moneyFormat.format(rv);
+
+            const monthlyMatch = dealInfo.match(/Monthly lease payments of ([\$\d,]+)/i);
+            if (!monthlyMatch)
+            {
+                return showError('Monthly payment amount was not found.');
+            }
+            const monthly = Number(monthlyMatch[1].replace(/[\$,]/g,''));
+            document.getElementById('resultMonthly').innerHTML = moneyFormat.format(monthly);
+
+            const termMatch = dealInfo.match(/for ([\d]+) months/i);
+            if (!termMatch)
+            {
+                return showError('Lease term was not found.');
+            }
+            document.getElementById('resultTerm').innerHTML = termMatch[1] + ' months';
+            const term = Number(termMatch[1]);
+
+            const mf = Math.round(((monthly * term - (capCost - rv))/((capCost + rv) * term)) * 100000) / 100000;
+            document.getElementById('resultMF').innerHTML = mf;
+            document.getElementById('resultAPR').innerHTML = Math.round(mf*2400 * 100)/100+'%';
+
+            const residualPercent = Math.round((100 * rv / msrp));
+            document.getElementById('resultResidualPercent').innerHTML = residualPercent  + '%';
+
+            const monthlyDepreciation = Math.round(((capCost-rv)/term)* 100) /100;
+            document.getElementById('resultMonthlyDepreciation').innerHTML = moneyFormat.format(monthlyDepreciation);
+
+            const monthlyRent = monthly - monthlyDepreciation;
+            document.getElementById('resultMonthlyRent').innerHTML = moneyFormat.format(monthlyRent);
+
+            const totalDepreciation = capCost-rv;
+            document.getElementById('resultTotalDepreciation').innerHTML = moneyFormat.format(totalDepreciation);
+
+            const totalRent = monthlyRent * term;
+            document.getElementById('resultTotalRent').innerHTML = moneyFormat.format(totalRent);
+
+            const totalCost = monthly * term;
+            document.getElementById('resultTotalCost').innerHTML = moneyFormat.format(totalCost);
+
+
+            document.getElementById('resultDiv').style.display = 'block';
+            return true;
+        }
+    </script>
+    <body>
+        <h1>BMW Lease Decoder</h1>
+        <hr/>
+        <form action="javascript:void(0);" >
+            <p>
+                Paste the additional important info text of your lease offer:
+            </p>
+            <textarea rows="10"  id="dealInfo" name="dealInfo" placeholder="Monthly lease payments of ..."></textarea>
+            <input type="submit" value="Decode" onclick="onDecode()"/>
+        </form>
+        <div style="clear:both"></div>
+        <div id="errorMsg" style="display:none"></div>
+        <div id="resultDiv" style="display:none">
+            <hr>
+            <div>
+                <dl>
+                    <dd>MSRP</dd>
+                    <dt id="resultMSRP"></dt>
+                    <dd>Adjusted Cap Cost</dd>
+                    <dt id="resultCapCost"></dt>
+                    <dd>Residual Value</dd>
+                    <dt id="resultResidual"></dt>
+                    <dd>Monthly Payment</dd>
+                    <dt id="resultMonthly"></dt>
+                    <dd>Term</dd>
+                    <dt id="resultTerm"></dt>
+                    <hr>                
+                    <dd>Money Factor</dd>
+                    <dt id="resultMF"></dt>
+                    <dd>Equivalent APR</dd>
+                    <dt id="resultAPR"></dt>
+                    <dd>Residual</dd>
+                    <dt id="resultResidualPercent"></dt>
+                    <hr>
+                    <dd>Monthly Depreciation</dd>
+                    <dt id="resultMonthlyDepreciation"></dt>
+                    <dd>Monthly Rent</dd>
+                    <dt id="resultMonthlyRent"></dt>
+                    <dd>Total Depreciation</dd>
+                    <dt id="resultTotalDepreciation"></dt>
+                    <dd>Total Rent</dd>
+                    <dt id="resultTotalRent"></dt>
+                    <dd>Total Cost</dd>
+                    <dt id="resultTotalCost"></dt>
+                </dl>        
+            </div>
+        </div>            
+    </body>
+</html>
